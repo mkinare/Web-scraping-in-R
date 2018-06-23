@@ -1,0 +1,22 @@
+library(rvest)
+netflixurl <- "https://www.netflix.com/de-en/login/"
+session <-html_session(netflixurl)
+
+form <-html_form(session)[[1]]
+filled_form <- set_values(form,
+                          "email" = userid, 
+                          "password" = password)
+submit_form(session,filled_form)
+
+#activity <- jump_to(session, "https://www.netflix.com/viewingactivity")
+
+whatisthis<-jump_to(session, "https://www.netflix.com/de-en/login/")
+
+page <- read_html(whatisthis)
+
+
+
+netflixwtf <- activity %>%
+  html_nodes(".bd") %>%
+  html_()
+
