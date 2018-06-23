@@ -1,3 +1,7 @@
+#Very first example with which I started the project
+#The goal is to be able to web scrape my netflix history and make some visuals using ggplot2
+#Never before have I done web scraping and am very excited to do this!
+
 library(rvest)
 netflixurl <- "https://www.netflix.com/de-en/login/"
 session <-html_session(netflixurl)
@@ -18,5 +22,8 @@ page <- read_html(whatisthis)
 
 netflixwtf <- activity %>%
   html_nodes(".bd") %>%
-  html_()
+  html_text()
 
+#Currently I have hit a road block where there is a "More" button which I need to trigger for more data
+#rvest doesn't allow me to do that natively and hence I have moved to explore more options
+#Currently found potential in RSelenium package
