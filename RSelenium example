@@ -1,5 +1,5 @@
 #It took quite some effort to get this running
-#At the the end what worked was a docker installation on my linux box
+#At the the end, what worked was a docker installation on my linux box
 #All earlier attempts of using a local web server for selenium have failed with over 10 hours invested in troubleshooting the errors
 #A note to everyone, please get a docker-ce installation in case you are doing this for yourself
 #Refer - https://ropensci.github.io/RSelenium/articles/RSelenium-docker.html which has good documentation and instructions
