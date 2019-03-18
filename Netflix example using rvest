@@ -2,28 +2,146 @@
 #The goal is to be able to web scrape my netflix history and make some visuals using ggplot2
 #Never before have I done web scraping and am very excited to do this!
 
-library(rvest)
-netflixurl <- "https://www.netflix.com/de-en/login/"
-session <-html_session(netflixurl)
+#Loading RSelenium
+library(RSelenium)
+#Loading sodium for encryption of id and password
+library(sodium)
+#Loading data.table for large data tables
+library(data.table)
 
-form <-html_form(session)[[1]]
-filled_form <- set_values(form,
-                          "email" = userid, 
-                          "password" = password)
-submit_form(session,filled_form)
+#Reading the saved RDS objects which have id and pass
+user<- readRDS("/home/erebus/RScripts/Keys/netflix_userid")
+pass<- readRDS("/home/erebus/RScripts/Keys/netflix_pass")
 
-#activity <- jump_to(session, "https://www.netflix.com/viewingactivity")
+#Run this in terminal
+#docker pull selenium/standalone-firefox
+#docker pull selenium/standalone-firefox
 
-whatisthis<-jump_to(session, "https://www.netflix.com/de-en/login/")
+#Opening a connection
+remDr <- remoteDriver(remoteServerAddr = "erebus"
+                      , port = 4445
+)
+#Starting a session
+remDr$open()
 
-page <- read_html(whatisthis)
+
+#Navigating to the website
+remDr$navigate("https://www.netflix.com")
+
+#What url are we on?
+remDr$getCurrentUrl()
+
+#What is the title?
+remDr$getTitle()
+
+#Finding the "Sign In" element
+webElem <- remDr$findElement("css", ".authLinks")
+#Clicking
+webElem$clickElement()
+
+#What url are we on?
+remDr$getCurrentUrl()
+
+#Finding the box to type the user id
+webElem <- remDr$findElement("css", "#id_userLoginId")
+#Sending the id
+webElem$sendKeysToElement(list(unserialize(simple_decrypt(user[[1]], user[[2]]))))
+#Sleeping for 5 seconds
+Sys.sleep(5)
+#Finding the box to type the user password
+webElem <- remDr$findElement("css", "#id_password")
+#Sending the password
+webElem$sendKeysToElement(list(unserialize(simple_decrypt(pass[[1]], pass[[2]])),"\uE007"))
+#Sleeping for 5 seconds
+Sys.sleep(5)
+#Finding the first profile
+webElem <- remDr$findElement("css", ".profile:nth-child(1) .profile-icon")
+#Clicking on the profile
+webElem$clickElement()
+
+#Navigating to the website viewing activity
+remDr$navigate("https://www.netflix.com/ViewingActivity")
+
+#Checking visually where we are on netflix
+remDr$maxWindowSize()
+remDr$screenshot(display = TRUE)
+
+#Commenting the following section as we found that "More" button needs to be pressed
+#------------------------------------------------------------------------------------
+# #Finding the element which has the information to be scraped
+# #Date
+# webElems <- remDr$findElements(using = 'css selector', ".nowrap")
+# resHeaders_date <- unlist(lapply(webElems, function(x){x$getElementText()}))
+# 
+# #Name of the show
+# webElems <- remDr$findElements(using = 'css selector', ".title a")
+# resHeaders_name <- unlist(lapply(webElems, function(x){x$getElementText()}))
+# 
+# #Data
+# list_data <- list()
+# list_data[[1]]<- data.frame(Date = resHeaders_date, Show = resHeaders_name)
+# 
+# #We now have to select "More" and scrape for more data
+# #Finding the more button
+# webElem <- remDr$findElement("css", ".btn-small")
+# #Clicking on the button
+# webElem$clickElement()
+# 
+# #Finding the element which has the information to be scraped
+# #Date
+# webElems <- remDr$findElements(using = 'css selector', ".nowrap")
+# resHeaders_date <- unlist(lapply(webElems, function(x){x$getElementText()}))
+# 
+# #Name of the show
+# webElems <- remDr$findElements(using = 'css selector', ".title a")
+# resHeaders_name <- unlist(lapply(webElems, function(x){x$getElementText()}))
+# 
+# #Data
+# list_data[[2]]<- data_frame(Date = resHeaders_date, Show = resHeaders_name)
+#------------------------------------------------------------------------------------
 
 
+#It looks like the button click keeps the older elements in there too!
 
-netflixwtf <- activity %>%
-  html_nodes(".bd") %>%
-  html_text()
+#webElem <- remDr$findElement("css", ".btn-small")
+#testing the use of enabled
+#script <-"return arguments[0].hidden;"
+#remDr$executeScript(script, args = list(webElem))
 
-#Currently I have hit a road block where there is a "More" button which I need to trigger for more data
-#rvest doesn't allow me to do that natively and hence I have moved to explore more options
-#Currently found potential in RSelenium package
+#Buton
+webElem <- remDr$findElement("css", ".btn-small")
+#Script
+script <-"return arguments[0].disabled;"
+#Initial state
+init_state<- remDr$executeScript(script, args = list(webElem))
+
+#Pressing the button till the button is hidden
+click_number <- 0
+while(remDr$executeScript(script, args = list(webElem))[[1]][1]==FALSE){
+  #Finding the more button
+  webElem <- remDr$findElement("css", ".btn-small")
+  #Clicking on the button
+  webElem$clickElement()
+  #Printing the click
+  click_number= click_number+1
+  print(paste0(click_number, ". 'More' button clicked"))
+  #Sleeping for 1 seconds
+  Sys.sleep(1)
+}
+#Screenshot
+remDr$maxWindowSize()
+remDr$screenshot(display = TRUE)
+
+#Date
+webElems <- remDr$findElements(using = 'css selector', ".nowrap")
+resHeaders_date <- unlist(lapply(webElems, function(x){x$getElementText()}))
+
+#Name of the show
+webElems <- remDr$findElements(using = 'css selector', ".title a")
+resHeaders_name <- unlist(lapply(webElems, function(x){x$getElementText()}))
+
+#Data
+netflix_history<- data.table(Date = as.Date(resHeaders_date,"%m/%d/%y"), Show = resHeaders_name)
+
+#Closing the client
+remDr$close()
